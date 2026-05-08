@@ -236,18 +236,6 @@ textarea{min-height:80px;resize:vertical;line-height:1.5;}
 .lang-option.sel .lang-check{display:block;}
 
 /* ── OTP AUTH ── */
-.auth-tabs{display:flex;gap:0;margin-bottom:16px;border:0.5px solid var(--border2);border-radius:var(--rsm);overflow:hidden;}
-.auth-tab{flex:1;padding:9px;text-align:center;font-size:13px;font-weight:500;background:none;border:none;color:var(--text2);font-family:var(--font);cursor:pointer;}
-.auth-tab.active{background:var(--accent);color:white;}
-.otp-group{display:none;}
-.otp-group.show{display:block;}
-.phone-row{display:flex;gap:8px;}
-.phone-cc{width:80px;flex-shrink:0;padding:13px 10px;border:0.5px solid var(--border2);border-radius:var(--rsm);font-size:15px;background:var(--surface);color:var(--text);font-family:var(--font);outline:none;-webkit-appearance:none;}
-.otp-boxes{display:flex;gap:8px;justify-content:center;margin-top:4px;}
-.otp-digit{width:48px;height:56px;border:0.5px solid var(--border2);border-radius:var(--rsm);font-size:24px;font-weight:600;text-align:center;background:var(--surface);color:var(--text);font-family:var(--font);outline:none;-webkit-appearance:none;}
-.otp-digit:focus{border-color:var(--accent);}
-.resend-row{text-align:center;font-size:12px;color:var(--text3);margin-top:8px;}
-.resend-btn{background:none;border:none;color:var(--accent);font-size:12px;font-family:var(--font);font-weight:500;padding:0;}
 
 </style>
 </head>
@@ -261,11 +249,6 @@ textarea{min-height:80px;resize:vertical;line-height:1.5;}
   <div class="auth-card">
     <div class="auth-title" id="auth-title">Sign in</div>
     <div class="auth-sub" id="auth-sub">Your bags, safely in the cloud.</div>
-    <!-- Auth method tabs -->
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-email-auth" onclick="setAuthMethod('email')">Email</button>
-      <button class="auth-tab" id="tab-phone-auth" onclick="setAuthMethod('phone')">Phone OTP</button>
-    </div>
     <div class="auth-err" id="auth-err"></div>
     <!-- Email/Password fields -->
     <div id="email-auth-group">
@@ -276,32 +259,6 @@ textarea{min-height:80px;resize:vertical;line-height:1.5;}
       <div class="form-group" style="margin-bottom:0">
         <label class="form-lbl" id="lbl-password">Password</label>
         <input type="password" id="auth-password" placeholder="Min 6 characters" autocomplete="current-password"/>
-      </div>
-    </div>
-    <!-- Phone OTP fields -->
-    <div id="phone-auth-group" class="otp-group">
-      <div id="phone-step-1">
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-lbl" id="lbl-phone">Phone number</label>
-          <div class="phone-row">
-            <input type="text" class="phone-cc" id="auth-phone-cc" value="+91" placeholder="+91"/>
-            <input type="text" id="auth-phone" placeholder="98765 43210" inputmode="tel" autocomplete="tel" style="flex:1"/>
-          </div>
-        </div>
-      </div>
-      <div id="phone-step-2" style="display:none;">
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-lbl" id="lbl-otp">Enter 6-digit OTP</label>
-          <div class="otp-boxes">
-            <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
-            <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
-            <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
-            <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
-            <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
-            <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
-          </div>
-          <div class="resend-row">Didn't receive it? <button class="resend-btn" id="btn-resend-otp">Resend</button></div>
-        </div>
       </div>
     </div>
     <button class="btn btn-p" id="btn-auth-submit">Sign in</button>
@@ -3749,7 +3706,7 @@ document.getElementById('pwa-dismiss-btn').addEventListener('click',()=>{
 // ── SERVICE WORKER ──
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('/sw.js').then(reg=>{
+    navigator.serviceWorker.register('./sw.js').then(reg=>{
       console.log('BagTag SW registered:', reg.scope);
     }).catch(err=>{
       console.log('SW registration failed:', err);
@@ -3891,30 +3848,10 @@ searchClear.addEventListener('click',()=>{searchInp.value='';doSearch('');search
 
 // ── AUTH ──
 let authMode='signin';
-let authMethod='email'; // 'email' or 'phone'
-let phoneOtpSent=false;
 
-function setAuthMethod(method){
-  authMethod=method;
-  document.getElementById('tab-email-auth').classList.toggle('active',method==='email');
-  document.getElementById('tab-phone-auth').classList.toggle('active',method==='phone');
-  document.getElementById('email-auth-group').style.display=method==='email'?'':'none';
-  document.getElementById('phone-auth-group').classList.toggle('show',method==='phone');
-  document.getElementById('auth-err').style.display='none';
-  phoneOtpSent=false;
-  document.getElementById('phone-step-1').style.display='';
-  document.getElementById('phone-step-2').style.display='none';
-  updateAuthBtn();
-}
 function updateAuthBtn(){
   const btn=document.getElementById('btn-auth-submit');
-  if(authMethod==='phone'){
-    btn.textContent=phoneOtpSent?'Verify OTP':'Send OTP';
-    document.getElementById('auth-switch-row').style.display='none';
-  } else {
-    btn.textContent=authMode==='signin'?t('sign_in'):t('create_account');
-    document.getElementById('auth-switch-row').style.display='';
-  }
+  btn.textContent=authMode==='signin'?t('sign_in'):t('create_account');
 }
 function showAuthScreen(){
   document.getElementById('auth-screen').classList.add('active');
@@ -3923,7 +3860,7 @@ function showAuthScreen(){
 }
 function hideAuthScreen(){
   document.getElementById('auth-screen').classList.remove('active');
-  document.querySelectorAll('.fab').forEach(f=>f.style.display='');
+  // FAB visibility is controlled by go() — do not force-show here
 }
 function setAuthMode(mode){
   authMode=mode;
@@ -3936,67 +3873,10 @@ function setAuthMode(mode){
 }
 document.getElementById('btn-auth-toggle').addEventListener('click',()=>setAuthMode(authMode==='signin'?'signup':'signin'));
 
-// OTP digit box auto-advance
-document.querySelectorAll('.otp-digit').forEach((inp,i,all)=>{
-  inp.addEventListener('input',e=>{
-    inp.value=inp.value.replace(/\D/g,'').slice(-1);
-    if(inp.value&&i<all.length-1) all[i+1].focus();
-    if([...all].every(d=>d.value)) document.getElementById('btn-auth-submit').click();
-  });
-  inp.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!inp.value&&i>0) all[i-1].focus();});
-});
-
-document.getElementById('btn-resend-otp').addEventListener('click',async()=>{
-  phoneOtpSent=false;
-  document.getElementById('phone-step-1').style.display='';
-  document.getElementById('phone-step-2').style.display='none';
-  updateAuthBtn();
-  toast('Enter your number and tap Send OTP again');
-});
-
 document.getElementById('btn-auth-submit').addEventListener('click',async()=>{
   const errEl=document.getElementById('auth-err');
   const btn=document.getElementById('btn-auth-submit');
   errEl.style.display='none';
-  if(authMethod==='phone'){
-    if(!phoneOtpSent){
-      const cc=document.getElementById('auth-phone-cc').value.trim()||'+91';
-      let num=document.getElementById('auth-phone').value.trim().replace(/\s/g,'');
-      if(!num){errEl.textContent='Please enter your phone number.';errEl.style.display='';return;}
-      // Strip leading country code if user already typed it (e.g. +91XXXXXXXXXX or 91XXXXXXXXXX)
-      const ccDigits=cc.replace(/^\+/,'');
-      if(num.startsWith(cc)) num=num.slice(cc.length);
-      else if(num.startsWith(ccDigits)) num=num.slice(ccDigits.length);
-      const phone=cc+num;
-      btn.innerHTML='<span class="auth-spinner"></span>Sending…';btn.disabled=true;
-      const{error}=await sb.auth.signInWithOtp({phone});
-      btn.disabled=false;
-      if(error){errEl.textContent=error.message;errEl.style.display='';btn.textContent='Send OTP';return;}
-      phoneOtpSent=true;
-      document.getElementById('phone-step-1').style.display='none';
-      document.getElementById('phone-step-2').style.display='';
-      btn.textContent='Verify OTP';
-      toast('OTP sent! Check your SMS.');
-      document.querySelectorAll('.otp-digit')[0].focus();
-    } else {
-      const token=[...document.querySelectorAll('.otp-digit')].map(d=>d.value).join('');
-      if(token.length<6){errEl.textContent='Please enter the 6-digit OTP.';errEl.style.display='';return;}
-      const cc=document.getElementById('auth-phone-cc').value.trim()||'+91';
-      let num=document.getElementById('auth-phone').value.trim().replace(/\s/g,'');
-      const ccDigits=cc.replace(/^\+/,'');
-      if(num.startsWith(cc)) num=num.slice(cc.length);
-      else if(num.startsWith(ccDigits)) num=num.slice(ccDigits.length);
-      const phone=cc+num;
-      btn.innerHTML='<span class="auth-spinner"></span>Verifying…';btn.disabled=true;
-      const{data,error}=await sb.auth.verifyOtp({phone,token,type:'sms'});
-      btn.disabled=false;
-      if(error){errEl.textContent=error.message;errEl.style.display='';btn.textContent='Verify OTP';return;}
-      currentUser=data.user;btn.textContent='Verify OTP';
-      await onSignedIn();
-    }
-    return;
-  }
-  // Email/password
   const email=document.getElementById('auth-email').value.trim();
   const password=document.getElementById('auth-password').value;
   if(!email||!password){errEl.textContent='Please enter email and password.';errEl.style.display='';return;}
@@ -4183,7 +4063,7 @@ function renderHome(){
   else{
     fe.style.display='none';
     fl.innerHTML=db.folders.map(f=>{
-      const col=COLORS[f.color||1];
+      const col=COLORS[f.color||1]||COLORS[1];
       const bc=f.bags?f.bags.length:0;
       return`<div class="folder-card" onclick="openFolder('${f.id}')">
         <div class="folder-icon" style="background:${col.bg}">${f.emoji||'📁'}</div>
