@@ -4502,22 +4502,34 @@ function openEditItem(itemId){
 document.getElementById('back-edit-item').addEventListener('click',()=>{renderItems();go('bag-detail');});
 document.getElementById('btn-cancel-edit-item').addEventListener('click',()=>{renderItems();go('bag-detail');});
 document.getElementById('edit-media-area').addEventListener('click',()=>document.getElementById('edit-media-file').click());
-document.getElementById('edit-media-file').addEventListener('change',e=>{
+document.getElementById('edit-media-file').addEventListener('change',async e=>{
   const f=e.target.files[0];if(!f)return;
   const isVideo=f.type.startsWith('video');
-  const maxSize=isVideo?20*1024*1024:2*1024*1024;
-  if(f.size>maxSize){toast(`File too large! Max ${isVideo?'20 MB':'2 MB'}.`);return;}
-  editMedia.file=f;editMedia.type=isVideo?'video':'photo';
+  if(isVideo){
+    if(f.size>100*1024*1024){toast('Video too large! Max 100 MB. Try trimming it first.');return;}
+    editMedia.file=f;editMedia.type='video';
+    const r=new FileReader();
+    r.onload=ev=>{
+      editMedia.data=ev.target.result;
+      document.getElementById('edit-media-area').style.display='none';
+      const p=document.getElementById('edit-media-preview');p.style.display='';
+      p.innerHTML=`<video src="${editMedia.data}" controls style="width:100%;max-height:220px;display:block;border-radius:10px;"></video>`;
+    };
+    r.readAsDataURL(f);
+    return;
+  }
+  // Auto-compress photos
+  toast('Compressing image…');
+  const compressed = f.size > 2*1024*1024 ? await compressImage(f) : f;
+  editMedia.file=compressed;editMedia.type='photo';
   const r=new FileReader();
   r.onload=ev=>{
     editMedia.data=ev.target.result;
     document.getElementById('edit-media-area').style.display='none';
     const p=document.getElementById('edit-media-preview');p.style.display='';
-    p.innerHTML=editMedia.type==='video'
-      ?`<video src="${editMedia.data}" controls style="width:100%;max-height:220px;display:block;border-radius:10px;"></video>`
-      :`<img src="${editMedia.data}" style="width:100%;max-height:220px;object-fit:cover;display:block;border-radius:10px;"/>`;
+    p.innerHTML=`<img src="${editMedia.data}" style="width:100%;max-height:220px;object-fit:cover;display:block;border-radius:10px;"/>`;
   };
-  r.readAsDataURL(f);
+  r.readAsDataURL(compressed);
 });
 document.getElementById('btn-save-edit-item').addEventListener('click',async()=>{
   const name=document.getElementById('edit-item-name').value.trim();
@@ -4592,36 +4604,57 @@ document.getElementById('btn-add-item').addEventListener('click',()=>{
   document.getElementById('media-file').value='';
   go('add-item');setTimeout(()=>document.getElementById('inp-item-name').focus(),300);
 });
+// ── IMAGE COMPRESSION ──
+function compressImage(file, maxWidth=1200, quality=0.82){
+  return new Promise((resolve)=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      let w=img.width, h=img.height;
+      if(w>maxWidth){h=Math.round(h*maxWidth/w);w=maxWidth;}
+      const canvas=document.createElement('canvas');
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      canvas.toBlob(blob=>{
+        resolve(new File([blob],file.name,{type:'image/jpeg',lastModified:Date.now()}));
+      },'image/jpeg',quality);
+    };
+    img.src=url;
+  });
+}
+
 document.getElementById('back-add-item').addEventListener('click',()=>{renderItems();go('bag-detail');});
 document.getElementById('btn-cancel-item').addEventListener('click',()=>{renderItems();go('bag-detail');});
 document.getElementById('media-area').addEventListener('click',()=>document.getElementById('media-file').click());
-document.getElementById('media-file').addEventListener('change',e=>{
+document.getElementById('media-file').addEventListener('change',async e=>{
   const f=e.target.files[0];if(!f)return;
   const isVideo=f.type.startsWith('video');
-  const maxSize=isVideo?20*1024*1024:2*1024*1024;
-  const maxLabel=isVideo?'20 MB':'2 MB';
-  if(f.size>maxSize){
-    toast(`File too large! Max size is ${maxLabel}.`);
-    document.getElementById('media-file').value='';
-    const p=document.getElementById('media-preview');p.style.display='';
-    p.innerHTML=`<div style="background:var(--surface2);border:1.5px solid var(--border2);border-radius:10px;padding:16px;text-align:center;">
-      <div style="font-size:28px;margin-bottom:8px;">${isVideo?'🎬':'📷'}</div>
-      <div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:6px;">File too large (max ${maxLabel})</div>
-      <button class="btn btn-s" style="margin-top:12px;font-size:12px;" onclick="document.getElementById('media-area').style.display='';document.getElementById('media-preview').style.display='none';">Try again</button>
-    </div>`;
+  if(isVideo){
+    if(f.size>100*1024*1024){toast('Video too large! Max 100 MB. Try trimming it first.');return;}
+    media.file=f;media.type='video';
+    const r=new FileReader();
+    r.onload=ev=>{
+      media.data=ev.target.result;
+      document.getElementById('media-area').style.display='none';
+      const p=document.getElementById('media-preview');p.style.display='';
+      p.innerHTML=`<video src="${media.data}" controls style="width:100%;max-height:220px;display:block;border-radius:10px;"></video>`;
+    };
+    r.readAsDataURL(f);
     return;
   }
-  media.file=f;media.type=isVideo?'video':'photo';
+  // Auto-compress photos
+  toast('Compressing image…');
+  const compressed = f.size > 2*1024*1024 ? await compressImage(f) : f;
+  media.file=compressed;media.type='photo';
   const r=new FileReader();
   r.onload=ev=>{
     media.data=ev.target.result;
     document.getElementById('media-area').style.display='none';
     const p=document.getElementById('media-preview');p.style.display='';
-    p.innerHTML=media.type==='video'
-      ?`<video src="${media.data}" controls style="width:100%;max-height:220px;display:block;border-radius:10px;"></video>`
-      :`<img src="${media.data}" style="width:100%;max-height:220px;object-fit:cover;display:block;border-radius:10px;"/>`;
+    p.innerHTML=`<img src="${media.data}" style="width:100%;max-height:220px;object-fit:cover;display:block;border-radius:10px;"/>`;
   };
-  r.readAsDataURL(f);
+  r.readAsDataURL(compressed);
 });
 document.getElementById('btn-save-item').addEventListener('click',async()=>{
   const name=document.getElementById('inp-item-name').value.trim();
